@@ -131,6 +131,9 @@ dmypy.json
 # Ignore all dotfiles
 .*
 
+# Env
+prod.toml
+
 # PyCharm
 .idea/
 
