@@ -35,6 +35,7 @@ def get_matches():
 
     if config['cookie'] == "":
         config['cookie'] = input("Please input your steamLoginSecure cookie: \n-> ")
+        util.setConf(config)
 
     cookies = {'steamLoginSecure': config['cookie']}
 
@@ -47,6 +48,9 @@ def get_matches():
 
     if not WebDriverWait(driver, 10).until(ec.element_to_be_clickable((By.ID, "load_more_button"))):
         print("[Err] 'steamLoginSecure' cookie is probably expired")
+        config['cookie'] = ''
+        util.setConf(config)
+        driver.quit()
         exit(1)
 
     last_loaded = get_last_match_data()
@@ -67,9 +71,6 @@ def get_matches():
                 break
 
         try:
-            # element_load_more = WebDriverWait(driver, 30).until(
-            #    ec.presence_of_element_located((By.ID, "load_more_button")))
-
             element_load_more = WebDriverWait(driver, 15).until(
                 ec.element_to_be_clickable((By.ID, "load_more_button"))
             )
@@ -78,26 +79,21 @@ def get_matches():
 
         except selenium.common.exceptions.ElementClickInterceptedException:
             print("\n[Err] Couldn't get all games due to a steam error, try again later")
+            driver.quit()
             exit(1)
 
         except selenium.common.exceptions.TimeoutException:
             print("\n[*] Probably all matches loaded")
+            driver.quit()
             break
 
         i += 1
 
     print("[*] Getting page source")
-    time.sleep(3)
+    time.sleep(1)
     html = driver.page_source
-    # print(html)
-    # input("-> ")
-
-    # html = requests.get(url, cookies=cookies, headers=headers).content
     doc = lxml.html.fromstring(html)
-
-    # print(lxml.html.tostring(doc))
-    # print(doc.xpath('//*[@id="personaldata_elements_container"]/table')[0])
-    # print(doc.xpath('//*[@id="personaldata_elements_container"]/table/tbody'))
+    driver.quit()
 
     table_history = doc.xpath('//*[@id="personaldata_elements_container"]/table/tbody')[0]
     xml = [match for match in table_history.xpath("./tr")]
@@ -126,8 +122,11 @@ def get_valid_filename(s):
 def save_xml_to_disk(matches):
     Path("./xml").mkdir(parents=True, exist_ok=True)
 
+    # TODO check if we got any new matches, if we dont, abort, also dont overwrite, see below
+
     i = 0
-    for match in tqdm(matches, unit_scale=True, ncols=50):
+    print("[*] Saving .xml to disk")
+    for match in tqdm(matches, bar_format='{l_bar}{bar}', ncols=30):
         i += 1
         try:
             game_date = match.xpath(".//td[1]/table/tbody/tr[2]/td")[0].text_content().strip()
@@ -361,6 +360,13 @@ def main():
     # Load toml config
     global config
     config = util.getConf("prod.toml")
+
+    if config['reset']:
+        print("[*] Resetting data folders")
+        util.deldir("./json")
+        util.deldir("./xml")
+        config['reset'] = False
+        util.setConf(config)
 
     get_matches()
     check_matches()

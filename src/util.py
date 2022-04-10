@@ -133,6 +133,12 @@ def getConf(fname):
         exit(1)
 
 
+def setConf(data, fname="prod.toml"):
+    if Path(fname).is_file():
+        with open(fname, 'w') as f:
+            toml.dump(data, f)
+
+
 def checkConf(config):
     """
     TODO check if keys exist
@@ -154,6 +160,14 @@ def newline(n=1):
         print("")
 
 
+def deldir(dir_to_delete):
+    if dir_to_delete.startswith("."):
+        dir_to_delete = dir_to_delete.replace(".", Path(os.path.dirname(os.path.realpath(__file__))).parent.as_posix())
+
+    if Path(dir_to_delete).is_dir():
+        shutil.rmtree(dir_to_delete)
+
+
 def download_file(url, dest='./'):
 
     filename = url.split("/")[-1]
@@ -161,7 +175,7 @@ def download_file(url, dest='./'):
     response = requests.get(url, stream=True)
     total_size_in_bytes = int(response.headers.get('content-length', 0))
     block_size = 1024  # 1 Kibibyte
-    progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True, ncols=50)
+    progress_bar = tqdm(total=total_size_in_bytes, desc="Downloading", unit='iB', unit_scale=True, ncols=50)
 
     with open(destination, "wb") as file:
         for data in response.iter_content(block_size):
