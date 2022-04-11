@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "10.04.2022"
+__date__ = "11.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -28,7 +28,7 @@ from src import util
 def get_matches():
     print("[*] Getting latest match data")
 
-    driver_class = util.ChromeDriver()
+    driver_class = util.ChromeDriver(config)
     driver = driver_class.driver
 
     url = f"https://steamcommunity.com/profiles/{config['steam_id']}/gcpd/730?tab=matchhistorycompetitive"
@@ -46,7 +46,9 @@ def get_matches():
 
     driver.get(url)
 
-    if not WebDriverWait(driver, 10).until(ec.element_to_be_clickable((By.ID, "load_more_button"))):
+    try:
+        WebDriverWait(driver, 10).until(ec.element_to_be_clickable((By.ID, "load_more_button")))
+    except selenium.common.exceptions.TimeoutException:
         print("[Err] 'steamLoginSecure' cookie is probably expired")
         config['cookie'] = ''
         util.setConf(config)

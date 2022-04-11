@@ -1,3 +1,4 @@
 cookie = ''
 steam_id = ''
+headless = true
 reset = false

@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "10.04.2022"
+__date__ = "11.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -27,8 +27,9 @@ from selenium.webdriver.chrome.options import Options
 
 class ChromeDriver:
 
-    def __init__(self):
+    def __init__(self, config):
 
+        self.headless = config['headless']
         self.chrome_driver_path = self.getPath()
         self.chrome_options = self.setOptions()
 
@@ -39,7 +40,6 @@ class ChromeDriver:
 
         if self.browser_version[0:2] != self.driver_version[0:2]:
             print("[*] Updating chromedriver.exe, please wait")
-            self.driver.close()
             self.driver.quit()
 
             self.getNew(self.chrome_driver_path)  # update our outdated driver
@@ -69,17 +69,16 @@ class ChromeDriver:
 
         return driver_path
 
-    @staticmethod
-    def setOptions():
+    def setOptions(self):
         # Headless Chrome
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")
+        if self.headless:
+            chrome_options.add_argument("--headless")
         chrome_options.add_argument("--window-size=1920x1080")
         chrome_options.add_argument("--log-level=3")  # Fatal
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
         chrome_options.add_argument('--User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                                     ' AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.84 Safari/537.36')
-
         return chrome_options
 
     @staticmethod
@@ -175,7 +174,7 @@ def download_file(url, dest='./'):
     response = requests.get(url, stream=True)
     total_size_in_bytes = int(response.headers.get('content-length', 0))
     block_size = 1024  # 1 Kibibyte
-    progress_bar = tqdm(total=total_size_in_bytes, desc="Downloading", unit='iB', unit_scale=True, ncols=50)
+    progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True, ncols=60)
 
     with open(destination, "wb") as file:
         for data in response.iter_content(block_size):
