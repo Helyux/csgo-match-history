@@ -4,19 +4,18 @@ __date__ = "11.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
-import re
 import os
 import json
 import time
 import glob
 import random
-import lxml.html
-from tqdm import tqdm
 from pathlib import Path
 from datetime import timedelta
-import selenium.common.exceptions
 
 # Custom
+import lxml.html
+import selenium.common.exceptions
+from tqdm import tqdm
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -25,8 +24,8 @@ from selenium.webdriver.support import expected_conditions as ec
 from src import util
 
 
-def get_matches():
-    print("[*] Getting latest match data")
+def get_match_xml():
+    print("[*] Getting latest match data from steam")
 
     driver_class = util.ChromeDriver(config)
     driver = driver_class.driver
@@ -67,7 +66,7 @@ def get_matches():
 
         # Check if we need to load more
         if last_loaded:
-            found_last_loaded = driver.find_elements_by_xpath(f"//*[contains(text(), '{last_loaded}')]")
+            found_last_loaded = driver.find_elements(by=By.XPATH, value=f"//*[contains(text(), '{last_loaded}')]")
             if found_last_loaded:
                 print("\n[*] All new matches loaded")
                 break
@@ -91,7 +90,7 @@ def get_matches():
 
         i += 1
 
-    print("[*] Getting page source")
+    print("[*] Getting page source as '.xml'")
     time.sleep(1)
     html = driver.page_source
     doc = lxml.html.fromstring(html)
@@ -116,23 +115,18 @@ def get_last_match_data():
         return None
 
 
-def get_valid_filename(s):
-    s = str(s).strip().replace(' ', '_')
-    return re.sub(r'(?u)[^-\w.]', '', s)
-
-
 def save_xml_to_disk(matches):
     Path("./xml").mkdir(parents=True, exist_ok=True)
 
     # TODO check if we got any new matches, if we dont, abort, also dont overwrite, see below
 
     i = 0
-    print("[*] Saving .xml to disk")
+    print("[*] Saving '.xml' files to disk")
     for match in tqdm(matches, bar_format='{l_bar}{bar}', ncols=30):
         i += 1
         try:
             game_date = match.xpath(".//td[1]/table/tbody/tr[2]/td")[0].text_content().strip()
-            clean_game_date = get_valid_filename(game_date)
+            clean_game_date = util.get_valid_filename(game_date)
 
             with open(f"./xml/{clean_game_date}.xml", 'wb') as f:
                 f.write(lxml.html.tostring(match))
@@ -160,8 +154,8 @@ def download_demo(url=None, matchid=None, outcomeid=None, token=None):
             print("[*] Finished downloading demo")
 
 
-def check_matches():
-    print("[*] Checking all match .xml files")
+def match_xml_to_json():
+    print("[*] Converting match '.xml' files to '.json'")
     Path("./json").mkdir(parents=True, exist_ok=True)
 
     for match_xml in glob.glob("./xml/*.xml"):
@@ -260,7 +254,7 @@ def format_matchinfo(xmlf):
 def summarize():
 
     stats_map = {}
-    stats_overall = {'wins': 0, 'loses': 0, 'draws': 0, 'time_que': timedelta(), 'time_played': timedelta()}
+    stats_overall = {'games': 0, 'wins': 0, 'loses': 0, 'draws': 0, 'time_que': timedelta(), 'time_played': timedelta()}
     average_que_time = None
     average_play_time = None
 
@@ -271,7 +265,7 @@ def summarize():
 
     json_files = glob.glob("./json/*.json")  # [-100:] # last 100 only
     n_matches = len(json_files)
-    print(f"[*] Summarizing data from [{n_matches}] matches")
+    print(f"[*] Summarizing data from [{n_matches}] match '.xml' files")
     for match_json in json_files:
         with open(match_json, 'r') as jf:
             data = json.load(jf)
@@ -280,13 +274,19 @@ def summarize():
             xmap = matchinfo['xmap']
 
             if xmap not in stats_map:
+
+                # Init new map dict if it doesnt exist yet
                 stats_map[xmap] = {
+                    'games': 0,
                     'wins': 0,
                     'loses': 0,
                     'draws': 0,
-                    'time_que': 0,
-                    'time_played': 0
+                    'time_que': timedelta(),
+                    'time_played': timedelta()
                 }
+
+            stats_overall['games'] += 1
+            stats_map[xmap]['games'] += 1
 
             if matchinfo['outcome'] == "Win":
                 stats_overall['wins'] += 1
@@ -318,28 +318,33 @@ def summarize():
 
             stats_overall['time_que'] += que_timedelta
             stats_overall['time_played'] += played_timedelta
+            stats_map[xmap]['time_que'] += que_timedelta
+            stats_map[xmap]['time_played'] += played_timedelta
 
-    # Calculate overall winrate
-    stats_overall['winrate'] = int(stats_overall['wins'] / (n_matches - stats_overall['draws']) * 100)
+    # Calculate overall [winrate, que and play time average]
+    stats_overall['winrate'] = int(stats_overall['wins'] / (stats_overall['games'] - stats_overall['draws']) * 100)
+    stats_overall['time_que_average'] = stats_overall['time_que'] / stats_overall['games']
+    stats_overall['time_played_average'] = stats_overall['time_played'] / stats_overall['games']
 
-    # Calculate overall que and play time average
-    stats_overall['time_que_average'] = stats_overall['time_que'] / n_matches
-    stats_overall['time_played_average'] = stats_overall['time_played'] / n_matches
-
-    # Calculate winrate per map
+    # Calculate per map [play%, winrate, que and play time average]
     for xmap in stats_map:
-        n_map_matches = stats_map[xmap]['wins'] + stats_map[xmap]['loses']  # stats_map[xmap]['draws']
-        stats_map[xmap]['winrate'] = int((stats_map[xmap]['wins'] / n_map_matches) * 100) # noqa
+        stats_map[xmap]['play%'] = int(stats_map[xmap]['games'] / stats_overall['games'] * 100)
+        stats_map[xmap]['winrate'] = int(stats_map[xmap]['wins'] / (stats_map[xmap]['games'] - stats_map[xmap]['draws']) * 100) # noqa
+        stats_map[xmap]['time_que_average'] = stats_map[xmap]['time_que'] / stats_map[xmap]['games']
+        stats_map[xmap]['time_played_average'] = stats_map[xmap]['time_played'] / stats_map[xmap]['games']
 
     util.newline()
-    print(f" |-------------|---W---L---D-|-Win%-|")
+    print(f" |--Map--------|---G-----%--|---W---L---D-|-Win%-|")
     for xmap in stats_map:
         print(f" |_ {xmap:10s} | "
+              f"{stats_map[xmap]['games']:3d} "
+              f"({stats_map[xmap]['play%']:3d}%) | "
               f"{stats_map[xmap]['wins']:3d} "
               f"{stats_map[xmap]['loses']:3d} "
               f"{stats_map[xmap]['draws']:3d} | "
               f"{stats_map[xmap]['winrate']:3d}% |")
-    print(f" |----------------------------------|\n |_ Total      | "
+    print(f" |-----------------------------------------------|\n |_ Total      | "
+          f"{stats_overall['games']:3d}        | "
           f"{stats_overall['wins']:3d} "
           f"{stats_overall['loses']:3d} "
           f"{stats_overall['draws']:3d} | "
@@ -355,6 +360,15 @@ def summarize():
     print(util.format_single_stat("Average play time", stats_overall['time_played_average']))
     print(util.format_single_stat("Longest play time", longest_play_time))
     print(util.format_single_stat("Shortest play time", shortest_play_time))
+    util.newline()
+    print(f" |--Map--------|-Total Que--|-Total Play-|-Avg Que--|-Avg Play-|")
+    for xmap in stats_map:
+        print(f" |_ {xmap:10s} | "
+              f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} |")
+    print(f" |-------------------------------------------------------------|")
 
 
 def main():
@@ -370,8 +384,8 @@ def main():
         config['reset'] = False
         util.setConf(config)
 
-    get_matches()
-    check_matches()
+    get_match_xml()
+    match_xml_to_json()
     summarize()
 
 

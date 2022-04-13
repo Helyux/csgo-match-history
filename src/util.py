@@ -10,16 +10,18 @@ __status__ = "Development"
 
 
 # Default
+import re
 import math
+import string
 import shutil
 import zipfile
 import os.path
-import requests
 from pathlib import Path
 from datetime import timedelta
 
 # Custom
 import toml
+import requests
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -147,11 +149,35 @@ def checkConf(config):
 
 def format_single_stat(tx, stat):
 
-    if isinstance(stat, timedelta):
-        # Round up timedeltas, see https://stackoverflow.com/a/60976512/5593051
-        stat = timedelta(seconds=math.ceil(stat.total_seconds()))
+    stat = strfdelta(stat, "%{D}d %H:%M:%S")
 
-    return f"{str(tx):20s}: {str(stat):10s}"
+    return f"{tx:20s}: {stat}"
+
+
+def format_timedelta(td):
+    """ Round and stringify a timedelta"""
+    if isinstance(td, timedelta):
+        # Round up timedeltas, see https://stackoverflow.com/a/60976512/5593051
+        return str(timedelta(seconds=math.ceil(td.total_seconds())))
+    else:
+        return None
+
+
+class DeltaTemplate(string.Template):
+    delimiter = "%"
+
+
+def strfdelta(tdelta, fmt):
+    d = {"D": f"{tdelta.days:2d}"}
+    if d["D"] == " 0" and ("%{D}d" in fmt):
+        fmt = fmt.replace("%{D}d", "   ")
+    hours, rem = divmod(tdelta.seconds, 3600)
+    minutes, seconds = divmod(rem, 60)
+    d["H"] = f"{hours:02d}"
+    d["M"] = f"{minutes:02d}"
+    d["S"] = f"{seconds:02d}"
+    t = DeltaTemplate(fmt)
+    return t.safe_substitute(**d)
 
 
 def newline(n=1):
@@ -186,6 +212,11 @@ def download_file(url, dest='./'):
         exit(1)
 
     return destination
+
+
+def get_valid_filename(s):
+    s = str(s).strip().replace(' ', '_')
+    return re.sub(r'(?u)[^-\w.]', '', s)
 
 
 if __name__ == "__main__":
