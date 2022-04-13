@@ -390,8 +390,10 @@ def main():
         config['reset'] = False
         util.setConf(config)
 
-    #get_match_xml()
-    #match_xml_to_json()
+    if config['fetch_new']:
+        get_match_xml()
+        match_xml_to_json()
+
     summarize()
 
 
