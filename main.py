@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "11.04.2022"
+__date__ = "14.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -11,6 +11,7 @@ import glob
 import random
 from pathlib import Path
 from datetime import timedelta
+from collections import OrderedDict
 
 # Custom
 import lxml.html
@@ -255,8 +256,6 @@ def summarize():
 
     stats_map = {}
     stats_overall = {'games': 0, 'wins': 0, 'loses': 0, 'draws': 0, 'time_que': timedelta(), 'time_played': timedelta()}
-    average_que_time = None
-    average_play_time = None
 
     longest_que_time = timedelta()
     longest_play_time = timedelta()
@@ -321,6 +320,9 @@ def summarize():
             stats_map[xmap]['time_que'] += que_timedelta
             stats_map[xmap]['time_played'] += played_timedelta
 
+    # Sort map dict by games played
+    stats_map = OrderedDict(sorted(stats_map.items(), key=lambda x: x[1]['games'], reverse=True))
+
     # Calculate overall [winrate, que and play time average]
     stats_overall['winrate'] = int(stats_overall['wins'] / (stats_overall['games'] - stats_overall['draws']) * 100)
     stats_overall['time_que_average'] = stats_overall['time_que'] / stats_overall['games']
@@ -351,6 +353,19 @@ def summarize():
           f"{stats_overall['winrate']:3d}% |")
 
     util.newline()
+
+    print(f" |--Map--------|---G-|-Total Que--|-Total Play-|-Avg Que--|-Avg Play-|")
+    for xmap in stats_map:
+        print(f" |_ {xmap:10s} | "
+              f"{stats_map[xmap]['games']:3d} | "
+              f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} | "
+              f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} |")
+    print(f" |-------------------------------------------------------------------|")
+
+    util.newline()
+    print("Fun Stats\n-----------------------------------")
     print(util.format_single_stat("Total que time", stats_overall['time_que']))
     print(util.format_single_stat("Average que time", stats_overall['time_que_average']))
     print(util.format_single_stat("Longest que time", longest_que_time))
@@ -360,15 +375,6 @@ def summarize():
     print(util.format_single_stat("Average play time", stats_overall['time_played_average']))
     print(util.format_single_stat("Longest play time", longest_play_time))
     print(util.format_single_stat("Shortest play time", shortest_play_time))
-    util.newline()
-    print(f" |--Map--------|-Total Que--|-Total Play-|-Avg Que--|-Avg Play-|")
-    for xmap in stats_map:
-        print(f" |_ {xmap:10s} | "
-              f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} |")
-    print(f" |-------------------------------------------------------------|")
 
 
 def main():
@@ -384,8 +390,8 @@ def main():
         config['reset'] = False
         util.setConf(config)
 
-    get_match_xml()
-    match_xml_to_json()
+    #get_match_xml()
+    #match_xml_to_json()
     summarize()
 
 
