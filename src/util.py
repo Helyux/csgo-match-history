@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "11.04.2022"
+__date__ = "20.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -141,15 +141,28 @@ def setConf(data, fname="prod.toml"):
 
 
 def checkConf(config):
-    """
-    TODO check if keys exist
-    """
-    pass
+    required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new"]
+
+    for required_key in required:
+        if required_key not in config:
+            print(f"[Err] Missing key {required_key}")
+            exit(1)
+        else:
+            if config[required_key] == "":
+                print(f"[Err] Key {required_key} can't be empty")
+                exit(1)
 
 
-def format_single_stat(tx, stat):
+def format_single_stat(tx, stat, nround=0):
 
-    stat = strfdelta(stat, "%{D}d %H:%M:%S")
+    if isinstance(stat, timedelta):
+        stat = strfdelta(stat, "%{D}d %H:%M:%S")
+
+    if isinstance(stat, float):
+        if nround == 0:
+            stat = int(round(stat, nround))
+        else:
+            stat = round(stat, nround)
 
     return f"{tx:20s}: {stat}"
 

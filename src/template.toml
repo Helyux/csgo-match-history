@@ -1,5 +1,6 @@
 cookie = ''
 steam_id = ''
+api_key = ''
 headless = true
 reset = false
 fetch_new = true

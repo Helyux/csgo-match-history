@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "14.04.2022"
+__date__ = "20.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -23,6 +23,7 @@ from selenium.webdriver.support import expected_conditions as ec
 
 # Self
 from src import util
+from src import steam
 
 
 def get_match_xml():
@@ -58,7 +59,8 @@ def get_match_xml():
     last_loaded = get_last_match_data()
 
     if not last_loaded:
-        print("[*] Looks like it's your first time using csgo-match-history, trying to load all games")
+        print("[*] Looks like it's your first time using csgo-match-history")
+        print("    Trying to load all games, this might take a while")
 
     i = 1
     while True:
@@ -80,13 +82,12 @@ def get_match_xml():
             time.sleep(random.random())
 
         except selenium.common.exceptions.ElementClickInterceptedException:
-            print("\n[Err] Couldn't get all games due to a steam error, try again later")
+            print("\n[Err] Couldn't get all games due to a steam error, please try again later")
             driver.quit()
             exit(1)
 
         except selenium.common.exceptions.TimeoutException:
             print("\n[*] Probably all matches loaded")
-            driver.quit()
             break
 
         i += 1
@@ -123,7 +124,7 @@ def save_xml_to_disk(matches):
 
     i = 0
     print("[*] Saving '.xml' files to disk")
-    for match in tqdm(matches, bar_format='{l_bar}{bar}', ncols=30):
+    for match in tqdm(matches, bar_format='{l_bar}{bar}', ncols=60):
         i += 1
         try:
             game_date = match.xpath(".//td[1]/table/tbody/tr[2]/td")[0].text_content().strip()
@@ -156,10 +157,10 @@ def download_demo(url=None, matchid=None, outcomeid=None, token=None):
 
 
 def match_xml_to_json():
-    print("[*] Converting match '.xml' files to '.json'")
+    print("[*] Formatting and converting '.xml' files to '.json' (this can take a while)")
     Path("./json").mkdir(parents=True, exist_ok=True)
 
-    for match_xml in glob.glob("./xml/*.xml"):
+    for match_xml in tqdm(glob.glob("./xml/*.xml"), bar_format='{l_bar}{bar}', ncols=60):
         with open(match_xml, 'r') as xmlf:
             with open(f"./json/{os.path.basename(xmlf.name)[:-4]}.json", 'w') as jsonf:
                 json.dump(format_matchinfo(xmlf), jsonf, indent=4)
@@ -222,21 +223,25 @@ def format_matchinfo(xmlf):
     player_index = 1
     for playerinfo in inner_right_trs:
         steam_id = playerinfo.xpath('.//a')[0].get("href").split("/")[-1]
+        steam_id = Steam.resolve_vanity_url(steam_id)
 
         # Check if i was on losing or winning side
-        if steam_id == "sorryvirgin":
+        if steam_id == config['steam_id']:
             outcome = check_winning(match_score, player_index)
             matchinfo_json['outcome'] = outcome
             matchinfo['general'] = matchinfo_json
 
-        ping = playerinfo.xpath('.//td')[1].text_content().strip()
-        kills = playerinfo.xpath('.//td')[2].text_content().strip()
-        assists = playerinfo.xpath('.//td')[3].text_content().strip()
-        death = playerinfo.xpath('.//td')[4].text_content().strip()
-        hsp = playerinfo.xpath('.//td')[6].text_content().strip()
-        score = playerinfo.xpath('.//td')[7].text_content().strip()
+        alias = playerinfo.xpath('.//a')[1].text_content().strip()
+        ping = int(playerinfo.xpath('.//td')[1].text_content().strip())
+        kills = int(playerinfo.xpath('.//td')[2].text_content().strip())
+        assists = int(playerinfo.xpath('.//td')[3].text_content().strip())
+        death = int(playerinfo.xpath('.//td')[4].text_content().strip())
+        hsp = playerinfo.xpath('.//td')[6].text_content().strip()[:-1]  # Remove the %
+        hsp = (int(hsp) if hsp else 0)
+        score = int(playerinfo.xpath('.//td')[7].text_content().strip())
 
         single_playerinfo_json = {
+            'alias': alias,
             'ping': ping,
             'kills': kills,
             'assists': assists,
@@ -256,6 +261,7 @@ def summarize():
 
     stats_map = {}
     stats_overall = {'games': 0, 'wins': 0, 'loses': 0, 'draws': 0, 'time_que': timedelta(), 'time_played': timedelta()}
+    stats_players = {}
 
     longest_que_time = timedelta()
     longest_play_time = timedelta()
@@ -264,12 +270,18 @@ def summarize():
 
     json_files = glob.glob("./json/*.json")  # [-100:] # last 100 only
     n_matches = len(json_files)
+
+    if n_matches == 0:
+        print("[Err] Can't summarize from zero matches")
+        exit(1)
+
     print(f"[*] Summarizing data from [{n_matches}] match '.xml' files")
     for match_json in json_files:
         with open(match_json, 'r') as jf:
             data = json.load(jf)
 
             matchinfo = data['general']
+            playerinfo = data['players']
             xmap = matchinfo['xmap']
 
             if xmap not in stats_map:
@@ -320,8 +332,34 @@ def summarize():
             stats_map[xmap]['time_que'] += que_timedelta
             stats_map[xmap]['time_played'] += played_timedelta
 
-    # Sort map dict by games played
+            # Playerinfo
+            for steam_id in playerinfo:
+                if steam_id not in stats_players:
+
+                    # Init new player dict if it doesnt exist yet
+                    stats_players[steam_id] = {
+                        'alias': "",
+                        'games': 0,
+                        'ping': 0,
+                        'kills': 0,
+                        'assists': 0,
+                        'death': 0,
+                        'hs%': 0,
+                        'score': 0
+                    }
+
+                stats_players[steam_id]['alias'] = playerinfo[steam_id]['alias']
+                stats_players[steam_id]['games'] += 1
+                stats_players[steam_id]['ping'] += playerinfo[steam_id]['ping']
+                stats_players[steam_id]['kills'] += playerinfo[steam_id]['kills']
+                stats_players[steam_id]['assists'] += playerinfo[steam_id]['assists']
+                stats_players[steam_id]['death'] += playerinfo[steam_id]['death']
+                stats_players[steam_id]['hs%'] += playerinfo[steam_id]['hs%']
+                stats_players[steam_id]['score'] += playerinfo[steam_id]['score']
+
+    # Sort map and players dict by games played
     stats_map = OrderedDict(sorted(stats_map.items(), key=lambda x: x[1]['games'], reverse=True))
+    stats_players = OrderedDict(sorted(stats_players.items(), key=lambda x: x[1]['games'], reverse=True))
 
     # Calculate overall [winrate, que and play time average]
     stats_overall['winrate'] = int(stats_overall['wins'] / (stats_overall['games'] - stats_overall['draws']) * 100)
@@ -376,12 +414,47 @@ def summarize():
     print(util.format_single_stat("Longest play time", longest_play_time))
     print(util.format_single_stat("Shortest play time", shortest_play_time))
 
+    # Print your stats
+    for steam_id in stats_players:
+        if stats_players[steam_id]['games'] > 2:
+            print_player_stats(stats_players, steam_id)
+
+
+def print_player_stats(stats_players, steam_id):
+
+    ps = stats_players[steam_id]
+    alias = ps['alias']
+    ngames = ps['games']
+    average_ping = ps['ping'] / ps['games']
+    average_kills = ps['kills'] / ps['games']
+    average_assists = ps['assists'] / ps['games']
+    average_death = ps['death'] / ps['games']
+    average_hsp = ps['hs%'] / ps['games']
+    average_score = ps['score'] / ps['games']
+    average_kda = f"{average_kills:.0f}/{average_death:.0f}/{average_assists:.0f}"
+    kda_score = round((ps['kills'] + ps['assists']) / ps['death'], 2)
+
+    util.newline()
+    print(f"Player Stats: {alias}\n-----------------------------------")
+    print(util.format_single_stat("Number of Games", ngames))
+    print(util.format_single_stat("Average K/D/A", average_kda))
+    print(util.format_single_stat("Average Ping", average_ping))
+    # print(util.format_single_stat("Average Kills", average_kills))
+    # print(util.format_single_stat("Average Assists", average_assists))
+    # print(util.format_single_stat("Average Death", average_death))
+    print(util.format_single_stat("Average hsp", average_hsp) + "%")
+    print(util.format_single_stat("Average Score", average_score))
+    print(util.format_single_stat("KDA Score", kda_score, nround=2))
+
 
 def main():
 
     # Load toml config
     global config
     config = util.getConf("prod.toml")
+
+    global Steam
+    Steam = steam.Steam(config['api_key'])
 
     if config['reset']:
         print("[*] Resetting data folders")
