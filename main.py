@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "20.04.2022"
+__date__ = "23.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -26,6 +26,24 @@ from src import util
 from src import steam
 
 
+def get_last_match_data():
+    """
+    Reformat the latest .xml file date format (YYYY-MM-DD_HHMMSS_GMT.xml) into
+    the date format given by steam (YYYY-MM-DD HH:MM:SS GMT) history
+    """
+
+    p = Path("./xml")
+    if p.exists() and p.is_dir():
+        latest = os.listdir("./xml")[-1]
+        latest = latest[:-4]  # remove .xml
+        latest = latest.split("_")
+        xtime = latest[1]
+        latest[1] = ':'.join(xtime[i:i+2] for i in range(0, len(xtime), 2))  # Add ':' between HHMMSS
+        return ' '.join(latest)  # Put it back together
+    else:
+        return None
+
+
 def get_match_xml():
     print("[*] Getting latest match data from steam")
 
@@ -33,11 +51,6 @@ def get_match_xml():
     driver = driver_class.driver
 
     url = f"https://steamcommunity.com/profiles/{config['steam_id']}/gcpd/730?tab=matchhistorycompetitive"
-
-    if config['cookie'] == "":
-        config['cookie'] = input("Please input your steamLoginSecure cookie: \n-> ")
-        util.setConf(config)
-
     cookies = {'steamLoginSecure': config['cookie']}
 
     driver.get("https://steamcommunity.com/")
@@ -62,80 +75,125 @@ def get_match_xml():
         print("[*] Looks like it's your first time using csgo-match-history")
         print("    Trying to load all games, this might take a while")
 
-    i = 1
-    while True:
+    i = 0
+    loading = True
+    while loading:
 
-        print(f"\r[*] Loading matches [~{i * 8}]", end='', flush=True)
+        tr_cache = []
+        for tr in driver.find_elements(by=By.XPATH, value='//*[@id="personaldata_elements_container"]/table/tbody/tr'):
 
-        # Check if we need to load more
-        if last_loaded:
-            found_last_loaded = driver.find_elements(by=By.XPATH, value=f"//*[contains(text(), '{last_loaded}')]")
-            if found_last_loaded:
-                print("\n[*] All new matches loaded")
+            if tr in tr_cache:
+                continue
+            else:
+                print(f"\r[*] Loading matches [{i}]", end='', flush=True)
+
+                tr_cache.append(tr)
+                td = tr.find_elements(by=By.XPATH, value='.//td[1]/table/tbody/tr[2]/td')
+                if td:
+                    loaded = td[0].get_attribute("innerHTML").strip()
+                    if loaded == last_loaded:
+                        print("\n[*] All new matches loaded")
+                        loading = False
+                        break
+                    i += 1
+                else:
+                    continue
+
+        if loading:
+
+            try:
+                element_load_more = WebDriverWait(driver, 15).until(
+                    ec.element_to_be_clickable((By.ID, "load_more_button"))
+                )
+                element_load_more.click()
+                time.sleep(random.random())
+                i = 0
+
+            except selenium.common.exceptions.ElementClickInterceptedException:
+                print("\n[Err] Couldn't get all games due to a steam error, please try again later")
+                driver.quit()
+                exit(1)
+
+            except selenium.common.exceptions.TimeoutException:
+                print("\n[*] Probably all matches loaded")
                 break
 
-        try:
-            element_load_more = WebDriverWait(driver, 15).until(
-                ec.element_to_be_clickable((By.ID, "load_more_button"))
-            )
-            element_load_more.click()
-            time.sleep(random.random())
+    if i > 0:
+        print("[*] Getting page source as '.xml'")
+        time.sleep(1)
+        html = driver.page_source
+        doc = lxml.html.fromstring(html)
+        driver.quit()
 
-        except selenium.common.exceptions.ElementClickInterceptedException:
-            print("\n[Err] Couldn't get all games due to a steam error, please try again later")
-            driver.quit()
-            exit(1)
+        table_history = doc.xpath('//*[@id="personaldata_elements_container"]/table/tbody')[0]
+        xml = [match for match in table_history.xpath("./tr")]
+        xml.pop(0)  # Remove the headline
 
-        except selenium.common.exceptions.TimeoutException:
-            print("\n[*] Probably all matches loaded")
-            break
+        save_xml_to_disk(xml)
 
-        i += 1
-
-    print("[*] Getting page source as '.xml'")
-    time.sleep(1)
-    html = driver.page_source
-    doc = lxml.html.fromstring(html)
-    driver.quit()
-
-    table_history = doc.xpath('//*[@id="personaldata_elements_container"]/table/tbody')[0]
-    xml = [match for match in table_history.xpath("./tr")]
-    xml.pop(0)  # Remove the headline
-
-    save_xml_to_disk(xml)
-
-
-def get_last_match_data():
-    if os.path.exists("./xml"):
-        latest = os.listdir("./xml")[-1]
-        latest = latest[:-4]  # remove .xml
-        latest = latest.split("_")
-        xtime = latest[1]
-        latest[1] = ':'.join(xtime[i:i+2] for i in range(0, len(xtime), 2))
-        return ' '.join(latest)
     else:
-        return None
+        print("[*] No new matches found")
 
 
 def save_xml_to_disk(matches):
+
+    print("[*] Saving '.xml' files to disk")
     Path("./xml").mkdir(parents=True, exist_ok=True)
 
-    # TODO check if we got any new matches, if we dont, abort, also dont overwrite, see below
-
-    i = 0
-    print("[*] Saving '.xml' files to disk")
-    for match in tqdm(matches, bar_format='{l_bar}{bar}', ncols=60):
-        i += 1
+    for match in tqdm(matches, bar_format='{l_bar}{bar} [{n_fmt}/{total_fmt}]', ncols=50):
         try:
             game_date = match.xpath(".//td[1]/table/tbody/tr[2]/td")[0].text_content().strip()
             clean_game_date = util.get_valid_filename(game_date)
 
-            with open(f"./xml/{clean_game_date}.xml", 'wb') as f:
-                f.write(lxml.html.tostring(match))
+            p = Path(f"./xml/{clean_game_date}.xml")
+
+            if not p.exists():
+                with open(p, 'wb') as f:
+                    f.write(lxml.html.tostring(match))
 
         except Exception as e:
             print(e)
             continue
+
+    time.sleep(0.1)
+
+
+def match_xml_to_json():
+    print("[*] Formatting and converting '.xml' files to '.json' (this can take a while on the first run)")
+    time.sleep(0.1)
+    Path("./json").mkdir(parents=True, exist_ok=True)
+
+    for match_xml in tqdm(glob.glob("./xml/*.xml"), bar_format='{l_bar}{bar} [{n_fmt}/{total_fmt}]', ncols=50):
+
+        p_xml = Path(match_xml)
+        p_json = Path(f"./json/{p_xml.name[:-4]}.json")
+
+        if not p_json.exists():
+            with open(match_xml, 'r') as xmlf:
+                with open(f"./json/{os.path.basename(xmlf.name)[:-4]}.json", 'w') as jsonf:
+                    json.dump(format_matchinfo(xmlf), jsonf, indent=4)
+
+
+def check_winning(match_score, player_index):
+
+    if match_score == "15:15":
+        outcome = "Draw"
+    else:
+        if not any(x in match_score for x in ["15", "16"]):
+            # Game ended early, skip these games as we got no way to determine who won on a surrender
+            outcome = "Surrender"
+        else:
+            score = match_score.split(":")
+            if score[0] == "16" and player_index < 5:
+                outcome = "Win"
+            elif score[1] == "16" and player_index > 5:
+                outcome = "Win"
+            else:
+                outcome = "Lose"
+
+    # print(f"[DEBUG] {match_score} / {player_index} / {side} / {outcome}")
+
+    return outcome
 
 
 def download_demo(url=None, matchid=None, outcomeid=None, token=None):
@@ -154,39 +212,6 @@ def download_demo(url=None, matchid=None, outcomeid=None, token=None):
             # We didn't so start the download
             util.download_file(url, "./demos/")
             print("[*] Finished downloading demo")
-
-
-def match_xml_to_json():
-    print("[*] Formatting and converting '.xml' files to '.json' (this can take a while)")
-    Path("./json").mkdir(parents=True, exist_ok=True)
-
-    for match_xml in tqdm(glob.glob("./xml/*.xml"), bar_format='{l_bar}{bar}', ncols=60):
-        with open(match_xml, 'r') as xmlf:
-            with open(f"./json/{os.path.basename(xmlf.name)[:-4]}.json", 'w') as jsonf:
-                json.dump(format_matchinfo(xmlf), jsonf, indent=4)
-
-
-def check_winning(match_score, player_index):
-
-    if match_score == "15:15":
-        outcome = "Draw"
-    else:
-        if player_index > 5:
-            side = "right"
-        else:
-            side = "left"
-
-        score = match_score.split(":")
-        if score[0] == "16" and side == "left":
-            outcome = "Win"
-        elif score[1] == "16" and side == "right":
-            outcome = "Win"
-        else:
-            outcome = "Lose"
-
-    # print(f"[DEBUG] {match_score} / {player_index} / {side} / {outcome}")
-
-    return outcome
 
 
 def format_matchinfo(xmlf):
@@ -222,8 +247,8 @@ def format_matchinfo(xmlf):
     playerinfos = {}
     player_index = 1
     for playerinfo in inner_right_trs:
-        steam_id = playerinfo.xpath('.//a')[0].get("href").split("/")[-1]
-        steam_id = Steam.resolve_vanity_url(steam_id)
+        steam_id = playerinfo.xpath('.//a')[0].get("href").split("/")
+        steam_id = Steam.resolve_vanity_url(steam_id[-1])
 
         # Check if i was on losing or winning side
         if steam_id == config['steam_id']:
@@ -236,8 +261,10 @@ def format_matchinfo(xmlf):
         kills = int(playerinfo.xpath('.//td')[2].text_content().strip())
         assists = int(playerinfo.xpath('.//td')[3].text_content().strip())
         death = int(playerinfo.xpath('.//td')[4].text_content().strip())
+        raw_mvps = playerinfo.xpath('.//td')[5].text_content().strip()
+        mvps = 0 if not raw_mvps else 1 if raw_mvps == "★" else int(raw_mvps.replace("★", ""))
         hsp = playerinfo.xpath('.//td')[6].text_content().strip()[:-1]  # Remove the %
-        hsp = (int(hsp) if hsp else 0)
+        hsp = int(hsp) if hsp else 0
         score = int(playerinfo.xpath('.//td')[7].text_content().strip())
 
         single_playerinfo_json = {
@@ -246,6 +273,7 @@ def format_matchinfo(xmlf):
             'kills': kills,
             'assists': assists,
             'death': death,
+            'mvps': mvps,
             'hs%': hsp,
             'score': score
         }
@@ -260,8 +288,9 @@ def format_matchinfo(xmlf):
 def summarize():
 
     stats_map = {}
-    stats_overall = {'games': 0, 'wins': 0, 'loses': 0, 'draws': 0, 'time_que': timedelta(), 'time_played': timedelta()}
     stats_players = {}
+    stats_overall = {'games': 0, 'wins': 0, 'loses': 0, 'draws': 0, 'surrenders': 0,
+                     'time_que': timedelta(), 'time_played': timedelta()}
 
     longest_que_time = timedelta()
     longest_play_time = timedelta()
@@ -275,7 +304,7 @@ def summarize():
         print("[Err] Can't summarize from zero matches")
         exit(1)
 
-    print(f"[*] Summarizing data from [{n_matches}] match '.xml' files")
+    print(f"[*] Summarizing data from [{n_matches}] match '.json' files")
     for match_json in json_files:
         with open(match_json, 'r') as jf:
             data = json.load(jf)
@@ -292,6 +321,7 @@ def summarize():
                     'wins': 0,
                     'loses': 0,
                     'draws': 0,
+                    'surrenders': 0,
                     'time_que': timedelta(),
                     'time_played': timedelta()
                 }
@@ -308,6 +338,9 @@ def summarize():
             elif matchinfo['outcome'] == "Draw":
                 stats_overall['draws'] += 1
                 stats_map[xmap]['draws'] += 1
+            elif matchinfo['outcome'] == "Surrender":
+                stats_overall['surrenders'] += 1
+                stats_map[xmap]['surrenders'] += 1
 
             m, s = matchinfo['time_que'].split(":")
             que_timedelta = timedelta(minutes=int(m), seconds=int(s))
@@ -344,6 +377,7 @@ def summarize():
                         'kills': 0,
                         'assists': 0,
                         'death': 0,
+                        'mvps': 0,
                         'hs%': 0,
                         'score': 0
                     }
@@ -354,6 +388,7 @@ def summarize():
                 stats_players[steam_id]['kills'] += playerinfo[steam_id]['kills']
                 stats_players[steam_id]['assists'] += playerinfo[steam_id]['assists']
                 stats_players[steam_id]['death'] += playerinfo[steam_id]['death']
+                stats_players[steam_id]['mvps'] += playerinfo[steam_id]['mvps']
                 stats_players[steam_id]['hs%'] += playerinfo[steam_id]['hs%']
                 stats_players[steam_id]['score'] += playerinfo[steam_id]['score']
 
@@ -362,32 +397,34 @@ def summarize():
     stats_players = OrderedDict(sorted(stats_players.items(), key=lambda x: x[1]['games'], reverse=True))
 
     # Calculate overall [winrate, que and play time average]
-    stats_overall['winrate'] = int(stats_overall['wins'] / (stats_overall['games'] - stats_overall['draws']) * 100)
+    stats_overall['winrate'] = int(stats_overall['wins'] / (stats_overall['games'] - (stats_overall['draws'] + stats_overall['surrenders'])) * 100) # noqa
     stats_overall['time_que_average'] = stats_overall['time_que'] / stats_overall['games']
     stats_overall['time_played_average'] = stats_overall['time_played'] / stats_overall['games']
 
     # Calculate per map [play%, winrate, que and play time average]
     for xmap in stats_map:
         stats_map[xmap]['play%'] = int(stats_map[xmap]['games'] / stats_overall['games'] * 100)
-        stats_map[xmap]['winrate'] = int(stats_map[xmap]['wins'] / (stats_map[xmap]['games'] - stats_map[xmap]['draws']) * 100) # noqa
+        stats_map[xmap]['winrate'] = int(stats_map[xmap]['wins'] / (stats_map[xmap]['games'] - (stats_map[xmap]['draws'] + stats_map[xmap]['surrenders'])) * 100) # noqa
         stats_map[xmap]['time_que_average'] = stats_map[xmap]['time_que'] / stats_map[xmap]['games']
         stats_map[xmap]['time_played_average'] = stats_map[xmap]['time_played'] / stats_map[xmap]['games']
 
     util.newline()
-    print(f" |--Map--------|---G-----%--|---W---L---D-|-Win%-|")
+    print(f" |--Map--------|---G-----%--|---W---L---D---S-|-Win%-|")
     for xmap in stats_map:
         print(f" |_ {xmap:10s} | "
               f"{stats_map[xmap]['games']:3d} "
               f"({stats_map[xmap]['play%']:3d}%) | "
               f"{stats_map[xmap]['wins']:3d} "
               f"{stats_map[xmap]['loses']:3d} "
-              f"{stats_map[xmap]['draws']:3d} | "
+              f"{stats_map[xmap]['draws']:3d} "
+              f"{stats_map[xmap]['surrenders']:3d} | "
               f"{stats_map[xmap]['winrate']:3d}% |")
-    print(f" |-----------------------------------------------|\n |_ Total      | "
+    print(f" |---------------------------------------------------|\n |_ Total      | "
           f"{stats_overall['games']:3d}        | "
           f"{stats_overall['wins']:3d} "
           f"{stats_overall['loses']:3d} "
-          f"{stats_overall['draws']:3d} | "
+          f"{stats_overall['draws']:3d} "
+          f"{stats_overall['surrenders']:3d} | "
           f"{stats_overall['winrate']:3d}% |")
 
     util.newline()
@@ -429,6 +466,7 @@ def print_player_stats(stats_players, steam_id):
     average_kills = ps['kills'] / ps['games']
     average_assists = ps['assists'] / ps['games']
     average_death = ps['death'] / ps['games']
+    average_mvps = ps['mvps'] / ps['games']
     average_hsp = ps['hs%'] / ps['games']
     average_score = ps['score'] / ps['games']
     average_kda = f"{average_kills:.0f}/{average_death:.0f}/{average_assists:.0f}"
@@ -442,6 +480,7 @@ def print_player_stats(stats_players, steam_id):
     # print(util.format_single_stat("Average Kills", average_kills))
     # print(util.format_single_stat("Average Assists", average_assists))
     # print(util.format_single_stat("Average Death", average_death))
+    print(util.format_single_stat("Average mvps", average_mvps))
     print(util.format_single_stat("Average hsp", average_hsp) + "%")
     print(util.format_single_stat("Average Score", average_score))
     print(util.format_single_stat("KDA Score", kda_score, nround=2))

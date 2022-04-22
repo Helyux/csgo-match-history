@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "20.04.2022"
+__date__ = "23.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -141,6 +141,7 @@ def setConf(data, fname="prod.toml"):
 
 
 def checkConf(config):
+    changed = False
     required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new"]
 
     for required_key in required:
@@ -150,7 +151,14 @@ def checkConf(config):
         else:
             if config[required_key] == "":
                 print(f"[Err] Key {required_key} can't be empty")
-                exit(1)
+                user_input = input(f"[*] Please input a value for the key [{required_key}]: ").strip()
+                if user_input:
+                    changed = True
+                    config[required_key] = user_input
+                else:
+                    exit(1)
+    if changed:
+        setConf(config)
 
 
 def format_single_stat(tx, stat, nround=0):
