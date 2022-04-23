@@ -76,26 +76,29 @@ def get_match_xml():
         print("    Trying to load all games, this might take a while")
 
     i = 0
+    match_cache = []
     loading = True
+
     while loading:
 
-        tr_cache = []
-        for tr in driver.find_elements(by=By.XPATH, value='//*[@id="personaldata_elements_container"]/table/tbody/tr'):
+        matches = driver.find_elements(by=By.XPATH, value='//*[@id="personaldata_elements_container"]/table/tbody/tr')
 
-            if tr in tr_cache:
+        for match in matches:
+            if match in match_cache:
                 continue
             else:
                 print(f"\r[*] Loading matches [{i}]", end='', flush=True)
 
-                tr_cache.append(tr)
-                td = tr.find_elements(by=By.XPATH, value='.//td[1]/table/tbody/tr[2]/td')
-                if td:
-                    loaded = td[0].get_attribute("innerHTML").strip()
+                time_element = match.find_elements(by=By.XPATH, value='.//td[1]/table/tbody/tr[2]/td')
+                if time_element:
+                    loaded = time_element[0].get_attribute("innerHTML").strip()
                     if loaded == last_loaded:
                         print("\n[*] All new matches loaded")
                         loading = False
                         break
-                    i += 1
+                    else:
+                        match_cache.append(match)  # Only append valid games
+                        i += 1
                 else:
                     continue
 
@@ -107,7 +110,6 @@ def get_match_xml():
                 )
                 element_load_more.click()
                 time.sleep(random.random())
-                i = 0
 
             except selenium.common.exceptions.ElementClickInterceptedException:
                 print("\n[Err] Couldn't get all games due to a steam error, please try again later")
@@ -118,21 +120,12 @@ def get_match_xml():
                 print("\n[*] Probably all matches loaded")
                 break
 
-    if i > 0:
-        print("[*] Getting page source as '.xml'")
-        time.sleep(1)
-        html = driver.page_source
-        doc = lxml.html.fromstring(html)
-        driver.quit()
-
-        table_history = doc.xpath('//*[@id="personaldata_elements_container"]/table/tbody')[0]
-        xml = [match for match in table_history.xpath("./tr")]
-        xml.pop(0)  # Remove the headline
-
-        save_xml_to_disk(xml)
-
+    if match_cache:
+        save_xml_to_disk(match_cache)
     else:
         print("[*] No new matches found")
+
+    driver.quit()
 
 
 def save_xml_to_disk(matches):
@@ -141,19 +134,16 @@ def save_xml_to_disk(matches):
     Path("./xml").mkdir(parents=True, exist_ok=True)
 
     for match in tqdm(matches, bar_format='{l_bar}{bar} [{n_fmt}/{total_fmt}]', ncols=50):
-        try:
-            game_date = match.xpath(".//td[1]/table/tbody/tr[2]/td")[0].text_content().strip()
-            clean_game_date = util.get_valid_filename(game_date)
 
-            p = Path(f"./xml/{clean_game_date}.xml")
+        game_date_elements = match.find_elements(by=By.XPATH, value='.//td[1]/table/tbody/tr[2]/td')
+        game_date = game_date_elements[0].get_attribute("innerHTML").strip()
+        clean_game_date = util.get_valid_filename(game_date)
 
-            if not p.exists():
-                with open(p, 'wb') as f:
-                    f.write(lxml.html.tostring(match))
+        p = Path(f"./xml/{clean_game_date}.xml")
 
-        except Exception as e:
-            print(e)
-            continue
+        if not p.exists():
+            with open(p, 'w', encoding='UTF-8') as f:
+                f.write(match.get_attribute('outerHTML'))
 
     time.sleep(0.1)
 
