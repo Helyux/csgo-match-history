@@ -159,7 +159,7 @@ def match_xml_to_json():
         p_json = Path(f"./json/{p_xml.name[:-4]}.json")
 
         if not p_json.exists():
-            with open(match_xml, 'r') as xmlf:
+            with open(match_xml, 'r', encoding='UTF-8') as xmlf:
                 with open(f"./json/{os.path.basename(xmlf.name)[:-4]}.json", 'w') as jsonf:
                     json.dump(format_matchinfo(xmlf), jsonf, indent=4)
 
@@ -207,7 +207,8 @@ def download_demo(url=None, matchid=None, outcomeid=None, token=None):
 def format_matchinfo(xmlf):
 
     matchinfo = {}
-    match = lxml.html.parse(xmlf)
+    parser = lxml.html.HTMLParser(encoding='UTF-8')
+    match = lxml.html.parse(xmlf, parser=parser)
 
     # General Match Info
     inner_left_tds = match.xpath('.//table[@class="csgo_scoreboard_inner_left"]//td')
