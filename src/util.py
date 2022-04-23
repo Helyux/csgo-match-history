@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "23.04.2022"
+__date__ = "24.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -143,6 +143,10 @@ def setConf(data, fname="prod.toml"):
 def checkConf(config):
     changed = False
     required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new"]
+
+    # If we summarize only we don't need to check keys
+    if not config['fetch_new']:
+        return
 
     for required_key in required:
         if required_key not in config:
