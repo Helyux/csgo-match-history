@@ -15,15 +15,14 @@
 </div>
 
 <!-- PROJECT LOGO -->
-<br />
 <div align="center">
   <a href="https://github.com/Helyux/csgo-match-history">
     <img src="images/logo.png" alt="csgo-match-history">
   </a>
-
+  <br><br>
   <p align="center">
     Download your complete csgo matchhistory and parse available data to .json
-    <br />
+    <br><br>
     <a href="https://github.com/Helyux/csgo-match-history">View Demo</a>
     ·
     <a href="https://github.com/Helyux/csgo-match-history/issues">Report Bug</a>
