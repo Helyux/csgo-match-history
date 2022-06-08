@@ -18,10 +18,8 @@
 <br />
 <div align="center">
   <a href="https://github.com/Helyux/csgo-match-history">
-    <img src="images/logo.png" alt="Logo" width="725" height="88">
+    <img src="images/logo.png" alt="csgo-match-history" width="100%" height="100%">
   </a>
-
-  <h3 align="center">csgo-match-history</h3>
 
   <p align="center">
     Download your complete csgo matchhistory and parse available data to .json
