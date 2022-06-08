@@ -105,7 +105,7 @@ def get_match_xml():
         if loading:
 
             try:
-                element_load_more = WebDriverWait(driver, 15).until(
+                element_load_more = WebDriverWait(driver, 20).until(
                     ec.element_to_be_clickable((By.ID, "load_more_button"))
                 )
                 element_load_more.click()
