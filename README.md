@@ -18,7 +18,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/Helyux/csgo-match-history">
-    <img src="images/logo.png" alt="csgo-match-history" width="100%" height="100%">
+    <img src="images/logo.png" alt="csgo-match-history">
   </a>
 
   <p align="center">
