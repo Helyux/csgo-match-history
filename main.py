@@ -472,14 +472,14 @@ def print_player_stats(stats_players, steam_id):
     print(f"Player Stats: {alias}\n┌─────────────────────┬──────────────┐")
     print(util.format_single_stat("Number of Games", ngames))
     print(util.format_single_stat("Average K/D/A", average_kda))
-    print(util.format_single_stat("Average Ping", average_ping))
+    print(util.format_single_stat("Average ping", average_ping))
     # print(util.format_single_stat("Average Kills", average_kills))
     # print(util.format_single_stat("Average Assists", average_assists))
     # print(util.format_single_stat("Average Death", average_death))
     print(util.format_single_stat("Average mvps", average_mvps))
     print(util.format_single_stat("Average hsp", average_hsp, percent=True))
-    print(util.format_single_stat("Average Score", average_score))
-    print(util.format_single_stat("KDA Score", kda_score, nround=2))
+    print(util.format_single_stat("Average score", average_score))
+    print(util.format_single_stat("K/D/A score", kda_score, nround=2))
     print("└─────────────────────┴──────────────┘")
 
 
