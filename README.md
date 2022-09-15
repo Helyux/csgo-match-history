@@ -62,7 +62,18 @@
 
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-blah blah match history blah blah
+As i'm someone who likes to analyze available data i thought,<br>
+I have all this data on my competitive csgo matches.<br>
+Why not start to analyze that?<br>
+
+Currently available data:
+<ul>
+  <li>Map info (times played, times played %, win, lose, draw, surrender and win%)</li>
+  <li>Map misc (times played, map total que time, map total play time, map avg que time, map avg play time)</li>
+  <li>Fun stats (total que time, total avg que time, absolute longest que time, absolute shortest que time)</li>
+  <li>Fun stats (total play time, average play time, absolute longest play time, absolute shortest play time)</li>
+  <li>Player stats (times played with, avg K/D/A, avg ping, avg mvps, avg hsp%, avg score, K/D/A Score)</li>
+</ul>
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -101,7 +112,7 @@ pip install pipenv
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-<!-- USAGE EXAMPLES -->
+<!-- USAGE EXAMPLES 
 ## Usage
 
 Blah Blah Blah, this is how you can use it, blah blah
@@ -109,13 +120,28 @@ Blah Blah Blah, this is how you can use it, blah blah
 _For more examples, please refer to the [Documentation](https://example.com)_
 
 <p align="right">(<a href="#top">back to top</a>)</p>
+-->
+
+
+<!-- DEMO OUTPUT -->
+## Demo Output
+
+Here is some demo output, please excuse me being terrible at the game.
+
+<img src="images/map_info.png" width="350" title="map info" alt="map info example output">
+<img src="images/map_misc.png" width="350" title="map misc" alt="map misc example output">
+<img src="images/fun_stats.png" width="350" title="fun stats" alt="fun stats example output">
+<img src="images/player_stats.png" width="350" title="player stats" alt="player stats example output">
+
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] More analysis stuff
-- [ ] Graphics?
+- [ ] Add more available data
+- [ ] Visualize already available data
 
 See the [open issues](https://github.com/Helyux/csgo-match-history/issues) for a full list of proposed features (and known issues).
 
