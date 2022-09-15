@@ -21,9 +21,9 @@
   </a>
   <br><br>
   <p align="center">
-    Download your complete csgo matchhistory and parse available data to .json
+    Download your complete csgo matchhistory <br> Parse the gathered data to .json and <br> start a quick analysis on the data.
     <br><br>
-    <a href="https://github.com/Helyux/csgo-match-history">View Demo</a>
+    <a href="#demo-output">View Demo</a>
     ·
     <a href="https://github.com/Helyux/csgo-match-history/issues">Report Bug</a>
     ·
@@ -47,7 +47,8 @@
         <li><a href="#configuration--clipboard">Configuration :clipboard:</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
+    <!-- <li><a href="#usage">Usage</a></li> -->
+    <li><a href="#demo-output">Demo Output</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
@@ -62,9 +63,8 @@
 
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-As i'm someone who likes to analyze available data i thought,<br>
-I have all this data on my competitive csgo matches.<br>
-Why not start to analyze that?<br>
+As i'm someone who likes to analyze available data I thought, I have all this data on my competitive csgo matches.<br>
+Why not start to analyze it? → So i did it :)<br>
 
 Currently available data:
 <ul>
@@ -128,10 +128,12 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 
 Here is some demo output, please excuse me being terrible at the game.
 
-<img src="images/map_info.png" width="350" title="map info" alt="map info example output">
-<img src="images/map_misc.png" width="350" title="map misc" alt="map misc example output">
-<img src="images/fun_stats.png" width="350" title="fun stats" alt="fun stats example output">
-<img src="images/player_stats.png" width="350" title="player stats" alt="player stats example output">
+<div>
+<img src="images/map_info.png" width="500" height="300" title="map info" alt="map info example output">
+<img src="images/map_misc.png" width="500" height="300" title="map misc" alt="map misc example output">
+<img src="images/fun_stats.png" width="500" height="300" title="fun stats" alt="fun stats example output">
+<img src="images/player_stats.png" width="500" height="300" title="player stats" alt="player stats example output">
+</div>
 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
