@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "08.06.2022"
+__date__ = "15.09.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -395,52 +395,57 @@ def summarize():
     # Calculate per map [play%, winrate, que and play time average]
     for xmap in stats_map:
         stats_map[xmap]['play%'] = int(stats_map[xmap]['games'] / stats_overall['games'] * 100)
-        stats_map[xmap]['winrate'] = int(stats_map[xmap]['wins'] / (stats_map[xmap]['games'] - (stats_map[xmap]['draws'] + stats_map[xmap]['surrenders'])) * 100) # noqa
         stats_map[xmap]['time_que_average'] = stats_map[xmap]['time_que'] / stats_map[xmap]['games']
         stats_map[xmap]['time_played_average'] = stats_map[xmap]['time_played'] / stats_map[xmap]['games']
+        countable_matches = stats_map[xmap]['games'] - (stats_map[xmap]['draws'] + stats_map[xmap]['surrenders'])
+        if countable_matches > 0:
+            stats_map[xmap]['winrate'] = int((stats_map[xmap]['wins'] / countable_matches) * 100)  # noqa
+        else:
+            stats_map[xmap]['winrate'] = 0
 
     util.newline()
-    print(f" |--Map--------|---G-----%--|---W---L---D---S-|-Win%-|")
+    print(f" ┌──Map────────┬───G─────%──┬───W───L───D───S─┬─Win%─┐")
     for xmap in stats_map:
-        print(f" |_ {xmap:10s} | "
+        print(f" ├  {xmap:10s} │ "
               f"{stats_map[xmap]['games']:3d} "
-              f"({stats_map[xmap]['play%']:3d}%) | "
+              f"({stats_map[xmap]['play%']:3d}%) │ "
               f"{stats_map[xmap]['wins']:3d} "
               f"{stats_map[xmap]['loses']:3d} "
               f"{stats_map[xmap]['draws']:3d} "
-              f"{stats_map[xmap]['surrenders']:3d} | "
-              f"{stats_map[xmap]['winrate']:3d}% |")
-    print(f" |---------------------------------------------------|\n |_ Total      | "
-          f"{stats_overall['games']:3d}        | "
+              f"{stats_map[xmap]['surrenders']:3d} │ "
+              f"{stats_map[xmap]['winrate']:3d}% │")
+    print(f" ├─────────────┼────────────┼─────────────────┼──────┤\n └  Total      │ "
+          f"{stats_overall['games']:3d}        │ "
           f"{stats_overall['wins']:3d} "
           f"{stats_overall['loses']:3d} "
           f"{stats_overall['draws']:3d} "
-          f"{stats_overall['surrenders']:3d} | "
-          f"{stats_overall['winrate']:3d}% |")
+          f"{stats_overall['surrenders']:3d} │ "
+          f"{stats_overall['winrate']:3d}% ┘")
 
     util.newline()
 
-    print(f" |--Map--------|---G-|-Total Que--|-Total Play-|-Avg Que--|-Avg Play-|")
+    print(f" ┌──Map────────┬───G─┬─Total Que──┬─Total Play─┬─Avg Que──┬─Avg Play─┐")
     for xmap in stats_map:
-        print(f" |_ {xmap:10s} | "
-              f"{stats_map[xmap]['games']:3d} | "
-              f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} | "
-              f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} |")
-    print(f" |-------------------------------------------------------------------|")
+        print(f" ├  {xmap:10s} │ "
+              f"{stats_map[xmap]['games']:3d} │ "
+              f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} │ "
+              f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} │ "
+              f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} │ "
+              f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} │")
+    print(f" └─────────────┴─────┴────────────┴────────────┴──────────┴──────────┘")
 
     util.newline()
-    print("Fun Stats\n-----------------------------------")
+    print("Fun Stats:\n┌─────────────────────┬──────────────┐")
     print(util.format_single_stat("Total que time", stats_overall['time_que']))
     print(util.format_single_stat("Average que time", stats_overall['time_que_average']))
     print(util.format_single_stat("Longest que time", longest_que_time))
     print(util.format_single_stat("Shortest que time", shortest_que_time))
-    util.newline()
+    print("│                     │              │")
     print(util.format_single_stat("Total play time", stats_overall['time_played']))
     print(util.format_single_stat("Average play time", stats_overall['time_played_average']))
     print(util.format_single_stat("Longest play time", longest_play_time))
     print(util.format_single_stat("Shortest play time", shortest_play_time))
+    print("└─────────────────────┴──────────────┘")
 
     # Print your stats
     for steam_id in stats_players:
@@ -464,7 +469,7 @@ def print_player_stats(stats_players, steam_id):
     kda_score = round((ps['kills'] + ps['assists']) / ps['death'], 2)
 
     util.newline()
-    print(f"Player Stats: {alias}\n-----------------------------------")
+    print(f"Player Stats: {alias}\n┌─────────────────────┬──────────────┐")
     print(util.format_single_stat("Number of Games", ngames))
     print(util.format_single_stat("Average K/D/A", average_kda))
     print(util.format_single_stat("Average Ping", average_ping))
@@ -472,9 +477,10 @@ def print_player_stats(stats_players, steam_id):
     # print(util.format_single_stat("Average Assists", average_assists))
     # print(util.format_single_stat("Average Death", average_death))
     print(util.format_single_stat("Average mvps", average_mvps))
-    print(util.format_single_stat("Average hsp", average_hsp) + "%")
+    print(util.format_single_stat("Average hsp", average_hsp, percent=True))
     print(util.format_single_stat("Average Score", average_score))
     print(util.format_single_stat("KDA Score", kda_score, nround=2))
+    print("└─────────────────────┴──────────────┘")
 
 
 def main():

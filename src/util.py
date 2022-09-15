@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "24.04.2022"
+__date__ = "15.09.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -165,7 +165,7 @@ def checkConf(config):
         setConf(config)
 
 
-def format_single_stat(tx, stat, nround=0):
+def format_single_stat(tx, stat, nround=0, percent=False):
 
     if isinstance(stat, timedelta):
         stat = strfdelta(stat, "%{D}d %H:%M:%S")
@@ -176,7 +176,11 @@ def format_single_stat(tx, stat, nround=0):
         else:
             stat = round(stat, nround)
 
-    return f"{tx:20s}: {stat}"
+    display_stat = str(stat)
+    if percent:
+        display_stat += "%"
+
+    return f"├ {tx:20s}│ {display_stat:12s} │"
 
 
 def format_timedelta(td):
