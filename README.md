@@ -199,15 +199,15 @@ Resources i used and found helpful while building this.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/Helyux/csgo-inventory-tracker.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/Helyux/csgo-match-history.svg?style=for-the-badge
 [contributors-url]: https://github.com/Helyux/csgo-match-history/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Helyux/csgo-inventory-tracker.svg?style=for-the-badge
+[forks-shield]: https://img.shields.io/github/forks/Helyux/csgo-match-history.svg?style=for-the-badge
 [forks-url]: https://github.com/Helyux/csgo-match-history/network/members
-[stars-shield]: https://img.shields.io/github/stars/Helyux/csgo-inventory-tracker.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/Helyux/csgo-match-history.svg?style=for-the-badge
 [stars-url]: https://github.com/Helyux/csgo-match-history/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Helyux/csgo-inventory-tracker.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/Helyux/csgo-match-history.svg?style=for-the-badge
 [issues-url]: https://github.com/Helyux/csgo-match-history/issues
-[license-shield]: https://img.shields.io/github/license/Helyux/csgo-inventory-tracker.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/Helyux/csgo-match-history.svg?style=for-the-badge
 [license-url]: https://github.com/Helyux/csgo-match-history/blob/master/LICENSE
 [xing-shield]: https://img.shields.io/static/v1?style=for-the-badge&message=Xing&color=006567&logo=Xing&logoColor=FFFFFF&label
 [xing-url]: https://www.xing.com/profile/Lukas_Mahler10
