@@ -4,3 +4,4 @@ api_key = ''
 headless = true
 reset = false
 fetch_new = true
+player_min_games = 2

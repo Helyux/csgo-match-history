@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "15.09.2022"
+__date__ = "21.02.2023"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -288,7 +288,7 @@ def summarize():
     shortest_que_time = timedelta(days=1)
     shortest_play_time = timedelta(days=1)
 
-    json_files = glob.glob("./json/*.json")  # [-100:] # last 100 only
+    json_files = glob.glob(r".\json\*.json")  # [-100:] # last 100 only
     n_matches = len(json_files)
 
     if n_matches == 0:
@@ -298,7 +298,11 @@ def summarize():
     print(f"[*] Summarizing data from [{n_matches}] match '.json' files")
     for match_json in json_files:
         with open(match_json, 'r') as jf:
-            data = json.load(jf)
+            try:
+                data = json.load(jf)
+            except json.decoder.JSONDecodeError:
+                print(f"[Err] Failed to load corrupt file [{os.path.realpath(jf.name)}], skipping...")
+                continue
 
             matchinfo = data['general']
             playerinfo = data['players']
@@ -404,52 +408,53 @@ def summarize():
             stats_map[xmap]['winrate'] = 0
 
     util.newline()
-    print(f" ┌──Map────────┬───G─────%──┬───W───L───D───S─┬─Win%─┐")
+    print(f" ┌──Map────────┬────G─────%──┬────W────L───D───S─┬─Win%─┐")
     for xmap in stats_map:
         print(f" ├  {xmap:10s} │ "
-              f"{stats_map[xmap]['games']:3d} "
+              f"{stats_map[xmap]['games']:4d} "
               f"({stats_map[xmap]['play%']:3d}%) │ "
-              f"{stats_map[xmap]['wins']:3d} "
-              f"{stats_map[xmap]['loses']:3d} "
+              f"{stats_map[xmap]['wins']:4d} "
+              f"{stats_map[xmap]['loses']:4d} "
               f"{stats_map[xmap]['draws']:3d} "
               f"{stats_map[xmap]['surrenders']:3d} │ "
               f"{stats_map[xmap]['winrate']:3d}% │")
-    print(f" ├─────────────┼────────────┼─────────────────┼──────┤\n └  Total      │ "
-          f"{stats_overall['games']:3d}        │ "
-          f"{stats_overall['wins']:3d} "
-          f"{stats_overall['loses']:3d} "
+    print(f" ├─────────────┼─────────────┼───────────────────┼──────┤\n └  Total      │ "
+          f"{stats_overall['games']:4d}        │ "
+          f"{stats_overall['wins']:4d} "
+          f"{stats_overall['loses']:4d} "
           f"{stats_overall['draws']:3d} "
           f"{stats_overall['surrenders']:3d} │ "
           f"{stats_overall['winrate']:3d}% ┘")
 
     util.newline()
 
-    print(f" ┌──Map────────┬───G─┬─Total Que──┬─Total Play─┬─Avg Que──┬─Avg Play─┐")
+    print(f" ┌──Map────────┬────G─┬─Total Que──┬─Total Play─┬─Avg Que──┬─Avg Play─┐")
     for xmap in stats_map:
         print(f" ├  {xmap:10s} │ "
-              f"{stats_map[xmap]['games']:3d} │ "
+              f"{stats_map[xmap]['games']:4d} │ "
               f"{util.strfdelta(stats_map[xmap]['time_que'], '%{D}d %H:%{M}h')} │ "
               f"{util.strfdelta(stats_map[xmap]['time_played'], '%{D}d %H:%{M}h')} │ "
               f"{util.strfdelta(stats_map[xmap]['time_que_average'], '%M:%{S}min')} │ "
               f"{util.strfdelta(stats_map[xmap]['time_played_average'], '%M:%{S}min')} │")
-    print(f" └─────────────┴─────┴────────────┴────────────┴──────────┴──────────┘")
+    print(f" └─────────────┴──────┴────────────┴────────────┴──────────┴──────────┘")
 
     util.newline()
-    print("Fun Stats:\n┌─────────────────────┬──────────────┐")
+    print("Fun Stats:\n┌─────────────────────┬───────────────┐")
     print(util.format_single_stat("Total que time", stats_overall['time_que']))
     print(util.format_single_stat("Average que time", stats_overall['time_que_average']))
     print(util.format_single_stat("Longest que time", longest_que_time))
     print(util.format_single_stat("Shortest que time", shortest_que_time))
-    print("│                     │              │")
+    print("│                     │               │")
     print(util.format_single_stat("Total play time", stats_overall['time_played']))
     print(util.format_single_stat("Average play time", stats_overall['time_played_average']))
     print(util.format_single_stat("Longest play time", longest_play_time))
     print(util.format_single_stat("Shortest play time", shortest_play_time))
-    print("└─────────────────────┴──────────────┘")
+    print("└─────────────────────┴───────────────┘")
 
-    # Print your stats
+    # Print Player Stats
+    # Require atleast x amount of games played together (as defined in .toml)
     for steam_id in stats_players:
-        if stats_players[steam_id]['games'] > 2:
+        if stats_players[steam_id]['games'] >= config["player_min_games"]:
             print_player_stats(stats_players, steam_id)
 
 
@@ -469,7 +474,7 @@ def print_player_stats(stats_players, steam_id):
     kda_score = round((ps['kills'] + ps['assists']) / ps['death'], 2)
 
     util.newline()
-    print(f"Player Stats: {alias}\n┌─────────────────────┬──────────────┐")
+    print(f"Player Stats: {alias}\n┌─────────────────────┬───────────────┐")
     print(util.format_single_stat("Number of Games", ngames))
     print(util.format_single_stat("Average K/D/A", average_kda))
     print(util.format_single_stat("Average ping", average_ping))
@@ -480,7 +485,7 @@ def print_player_stats(stats_players, steam_id):
     print(util.format_single_stat("Average hsp", average_hsp, percent=True))
     print(util.format_single_stat("Average score", average_score))
     print(util.format_single_stat("K/D/A score", kda_score, nround=2))
-    print("└─────────────────────┴──────────────┘")
+    print("└─────────────────────┴───────────────┘")
 
 
 def main():

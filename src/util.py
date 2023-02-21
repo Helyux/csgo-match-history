@@ -4,7 +4,7 @@ TBD
 
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "15.09.2022"
+__date__ = "21.02.2023"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -142,10 +142,11 @@ def setConf(data, fname="prod.toml"):
 
 def checkConf(config):
     changed = False
-    required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new"]
+    required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new", "player_min_games"]
 
-    # If we summarize only we don't need to check keys
+    # If we do only summarize we just need to check the "player_min_games" key
     if not config['fetch_new']:
+        required = ["player_min_games"]
         return
 
     for required_key in required:
@@ -180,7 +181,7 @@ def format_single_stat(tx, stat, nround=0, percent=False):
     if percent:
         display_stat += "%"
 
-    return f"├ {tx:20s}│ {display_stat:12s} │"
+    return f"├ {tx:20s}│ {display_stat:13s} │"
 
 
 def format_timedelta(td):
