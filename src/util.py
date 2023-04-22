@@ -1,10 +1,6 @@
-"""
-TBD
-"""
-
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "21.02.2023"
+__date__ = "23.04.2023"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -24,6 +20,7 @@ import toml
 import requests
 from tqdm import tqdm
 from selenium import webdriver
+from selenium.common import exceptions
 from selenium.webdriver.chrome.options import Options
 
 
@@ -35,22 +32,28 @@ class ChromeDriver:
         self.chrome_driver_path = self.getPath()
         self.chrome_options = self.setOptions()
 
-        self.driver = webdriver.Chrome(options=self.chrome_options, executable_path=self.chrome_driver_path)
-
-        self.browser_version = self.driver.capabilities['browserVersion']
-        self.driver_version = self.driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0]
-
-        if self.browser_version[0:2] != self.driver_version[0:2]:
-            print("[*] Updating chromedriver.exe, please wait")
-            self.driver.quit()
-
-            self.getNew(self.chrome_driver_path)  # update our outdated driver
+        try:
             self.driver = webdriver.Chrome(options=self.chrome_options, executable_path=self.chrome_driver_path)
+            self.browser_version = self.driver.capabilities['browserVersion']
+            self.driver_version = self.driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0]
+
+            if self.browser_version[0:2] != self.driver_version[0:2]:
+                self.driver = self.getUpdatedDriver()
+
+        except selenium.common.exceptions.SessionNotCreatedException:
+            self.driver = self.getUpdatedDriver()
+
+    def getUpdatedDriver(self):
+        """ Get a new driver version """
+
+        print("[*] Updating chromedriver.exe, please wait")
+        self.driver.quit()
+        self.getNew(self.chrome_driver_path)
+        driver = webdriver.Chrome(options=self.chrome_options, executable_path=self.chrome_driver_path)
+        return driver
 
     def getPath(self):
-        """
-            find a current 'chromedriver.exe'
-        """
+        """ Find current chromedriver.exe """
 
         driver_path = fr"{os.path.dirname(os.path.realpath(__file__))}\chromedriver.exe"
         if os.path.isfile(driver_path):
