@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "21.02.2023"
+__date__ = "23.04.2023"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -196,22 +196,18 @@ def check_winning(match_score, player_index):
     return outcome
 
 
-def download_demo(url=None, matchid=None, outcomeid=None, token=None):
+def download_demo(url):
     Path("./demos").mkdir(parents=True, exist_ok=True)
 
-    # url = 'http://replay190.valve.net/730/003540319049349071083_1642207433.dem.bz2'  # Example
-
-    if url:
-
-        # Check if we haven't downloaded the demo yet
-        filename = url.split("/")[-1]
-        if os.path.exists(f"./demos/{filename}"):
-            # print("[*] Demo already downloaded")
-            return
-        else:
-            # We didn't so start the download
-            util.download_file(url, "./demos/")
-            print("[*] Finished downloading demo")
+    # Check if we haven't downloaded the demo yet
+    filename = url.split("/")[-1]
+    if os.path.exists(f"./demos/{filename}"):
+        # print("[*] Demo already downloaded")
+        return
+    else:
+        # We didn't so start the download
+        util.download_file(url, "./demos/")
+        print("[*] Finished downloading demo")
 
 
 def format_matchinfo(xmlf):
@@ -227,9 +223,11 @@ def format_matchinfo(xmlf):
     match_time_played = inner_left_tds[4].text_content().strip().split(" ")[-1]
     match_score = match.xpath('.//td[@class="csgo_scoreboard_score"]')[0].text_content().strip().replace(" ", "")
 
-    if len(inner_left_tds[-1].xpath('.//a')) > 0:
-        url = inner_left_tds[-1].xpath('.//a')[0].get("href")
-        download_demo(url=url)
+    # Download the Demo if wanted and available
+    if config['download_demos']:
+        if len(inner_left_tds[-1].xpath('.//a')) > 0:
+            url = inner_left_tds[-1].xpath('.//a')[0].get("href")
+            download_demo(url)
 
     matchinfo_json = {
         'xmap': match_map,
@@ -374,7 +372,7 @@ def summarize():
             for steam_id in playerinfo:
                 if steam_id not in stats_players:
 
-                    # Init new player dict if it doesnt exist yet
+                    # Init new player dict if it doesn't exist yet
                     stats_players[steam_id] = {
                         'alias': "",
                         'games': 0,

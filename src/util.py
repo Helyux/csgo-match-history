@@ -145,7 +145,7 @@ def setConf(data, fname="prod.toml"):
 
 def checkConf(config):
     changed = False
-    required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new", "player_min_games"]
+    required = ["cookie", "steam_id", "api_key", "headless", "reset", "fetch_new", "download_demos", "player_min_games"]
 
     # If we do only summarize we just need to check the "player_min_games" key
     if not config['fetch_new']:
