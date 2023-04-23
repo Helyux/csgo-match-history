@@ -166,17 +166,27 @@ def match_xml_to_json():
 
 def check_winning(match_score, player_index):
 
-    if match_score == "15:15":
+    if match_score == "15:15" or match_score == "8:8":
         outcome = "Draw"
     else:
-        if not any(x in match_score for x in ["15", "16"]):
+        if not any(x in match_score for x in ["9", "16"]):
             # Game ended early, skip these games as we got no way to determine who won on a surrender
             outcome = "Surrender"
         else:
-            score = match_score.split(":")
-            if score[0] == "16" and player_index < 5:
+            player_side = "left" if player_index < 5 else "right"
+            left_score, right_score = map(int, match_score.split(":"))
+
+            # determine the winning score based on the player's side
+            if player_side == "left":
+                player_score = left_score
+                opposition_score = right_score
+            else:
+                player_score = right_score
+                opposition_score = left_score
+
+            if player_score == 16 and opposition_score < 16:
                 outcome = "Win"
-            elif score[1] == "16" and player_index > 5:
+            elif player_score == 9 and opposition_score < 9:
                 outcome = "Win"
             else:
                 outcome = "Lose"
@@ -241,7 +251,7 @@ def format_matchinfo(xmlf):
         steam_id = playerinfo.xpath('.//a')[0].get("href").split("/")
         steam_id = Steam.resolve_vanity_url(steam_id[-1])
 
-        # Check if i was on losing or winning side
+        # Check if I was on losing or winning side
         if steam_id == config['steam_id']:
             outcome = check_winning(match_score, player_index)
             matchinfo_json['outcome'] = outcome
