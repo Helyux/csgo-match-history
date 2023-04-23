@@ -1,10 +1,6 @@
-"""
-TBD
-"""
-
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "20.04.2022"
+__date__ = "23.04.2022"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -30,7 +26,7 @@ class Steam:
         except ValueError:
             pass
 
-        # Check if we have't already resolved this vanity_url
+        # Check if we haven't already resolved this vanity_url
         if vanity_url in self.cache:
             # print("[*] Using cached steam_id")
             return self.cache[vanity_url]
@@ -43,11 +39,15 @@ class Steam:
 
             if req.status_code == 200:
                 data = json.loads(req.text)
-                steam_id = data['response']['steamid']
-                self.cache[vanity_url] = steam_id
-                return steam_id
+                if data['response']['success'] == 1:
+                    steam_id = data['response']['steamid']
+                    self.cache[vanity_url] = steam_id
+                    return steam_id
+                else:
+                    # print(f"[Err] Can't resolve the vanity url: [{data['response']['message']}]")
+                    return vanity_url
             else:
-                print(f"[Err] Can't resolve the vanity url [code: {req.status_code}]")
+                print(f"[Err] Can't resolve the vanity url: [http-code: {req.status_code}]")
                 return vanity_url
 
 
