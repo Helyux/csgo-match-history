@@ -1,6 +1,6 @@
 __author__ = "Lukas Mahler"
 __version__ = "0.0.0"
-__date__ = "23.04.2023"
+__date__ = "12.09.2023"
 __email__ = "m@hler.eu"
 __status__ = "Development"
 
@@ -20,7 +20,6 @@ import toml
 import requests
 from tqdm import tqdm
 from selenium import webdriver
-from selenium.common import exceptions
 from selenium.webdriver.chrome.options import Options
 
 
@@ -29,50 +28,8 @@ class ChromeDriver:
     def __init__(self, config):
 
         self.headless = config['headless']
-        self.chrome_driver_path = self.getPath()
         self.chrome_options = self.setOptions()
-
-        try:
-            self.driver = webdriver.Chrome(options=self.chrome_options, executable_path=self.chrome_driver_path)
-            self.browser_version = self.driver.capabilities['browserVersion']
-            self.driver_version = self.driver.capabilities['chrome']['chromedriverVersion'].split(' ')[0]
-
-            if self.browser_version[0:2] != self.driver_version[0:2]:
-                self.driver = self.getUpdatedDriver()
-
-        except selenium.common.exceptions.SessionNotCreatedException:
-            self.driver = self.getUpdatedDriver()
-
-    def getUpdatedDriver(self):
-        """ Get a new driver version """
-
-        print("[*] Updating chromedriver.exe, please wait")
-        self.driver.quit()
-        self.getNew(self.chrome_driver_path)
-        driver = webdriver.Chrome(options=self.chrome_options, executable_path=self.chrome_driver_path)
-        return driver
-
-    def getPath(self):
-        """ Find current chromedriver.exe """
-
-        driver_path = fr"{os.path.dirname(os.path.realpath(__file__))}\chromedriver.exe"
-        if os.path.isfile(driver_path):
-            return driver_path
-        else:
-            # print("[DEBUG] Chromedriver wasn't found in current working directory")
-            pass
-
-        driver_path = os.environ["temp"] + r"\Google\Chrome\Driver\chromedriver.exe"
-        if os.path.isfile(driver_path):
-            return driver_path
-        else:
-            # print(r"[DEBUG] Chromedriver wasn't found under %PROGRAMFILES(x86)%\Google\Chrome\driver")
-            pass
-
-        print("[*] Couldn't find a Chromedriver, downloading a new one")
-        self.getNew(driver_path)
-
-        return driver_path
+        self.driver = webdriver.Chrome(options=self.chrome_options)
 
     def setOptions(self):
         # Headless Chrome
@@ -82,35 +39,9 @@ class ChromeDriver:
         chrome_options.add_argument("--window-size=1920x1080")
         chrome_options.add_argument("--log-level=3")  # Fatal
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        chrome_options.add_argument('--User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                                    ' AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.84 Safari/537.36')
+        chrome_options.add_argument('--User-Agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                                    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36)')
         return chrome_options
-
-    @staticmethod
-    def getNew(driver_path):
-
-        driver_path = Path(driver_path)
-
-        if driver_path.is_file():
-            os.remove(driver_path)  # Remove old chromedriver.exe
-
-        # Get the latest chrome driver version number
-        url = 'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
-        version_number = requests.get(url).text
-
-        # build the download url
-        url = f"https://chromedriver.storage.googleapis.com/{version_number}/chromedriver_win32.zip"
-
-        # download the zip file using the url built above
-        driver_path.parent.mkdir(parents=True, exist_ok=True)
-        driver_zip = download_file(url, dest=driver_path.as_posix())
-
-        # extract the zip file
-        with zipfile.ZipFile(driver_zip, 'r') as zipf:
-            zipf.extractall(path=driver_path.parent.as_posix())  # you can specify the destination folder path here
-
-        # delete the zip file downloaded above
-        os.remove(driver_zip)
 
 
 def getConf(fname):
